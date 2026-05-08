@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+.env
+.env.local
+.vercel
+*.log
+.DS_Store
+scraper/dist
+scraper/node_modules
