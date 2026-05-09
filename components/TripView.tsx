@@ -1,11 +1,14 @@
+"use client";
+
 // Read-only trip renderer used by the public (statically-exported) site.
-// Server-renders cleanly — no client interactivity required.
+// Client component so it can react to the language switcher.
 
 import type { BudgetItem, Stay, Trip, TripFlight } from "@/lib/types";
 import type { PriceSnapshot } from "@/lib/fs-storage";
 import { formatLocalDate, isInvalidRange, nightsBetween } from "@/lib/dates";
 import { toEmbedSrc } from "@/lib/maps";
 import { formatMoney } from "@/lib/money";
+import { localeOf, useLang, useT } from "@/lib/i18n";
 import { ItineraryPanel } from "./ItineraryDisplay";
 import Sparkline from "./Sparkline";
 
@@ -21,6 +24,8 @@ export default function TripView({
   trip: Trip;
   histories: Record<string, PriceSnapshot[]>;
 }) {
+  const t = useT();
+  const { lang } = useLang();
   const embedSrc = toEmbedSrc(trip.mapsUrl);
   const datesInvalid = isInvalidRange(trip.startDate, trip.endDate);
   const nights = nightsBetween(trip.startDate, trip.endDate);
@@ -42,19 +47,19 @@ export default function TripView({
 
       <section className="grid gap-3 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex items-center gap-3">
-          <h1 className="flex-1 text-2xl font-semibold">{trip.name || "Untitled trip"}</h1>
+          <h1 className="flex-1 text-2xl font-semibold">{trip.name || t("trip.untitled")}</h1>
           {nights > 0 && !datesInvalid && (
             <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
-              {nights} night{nights !== 1 ? "s" : ""}
+              {t("trip.nights", { count: nights })}
             </span>
           )}
         </div>
 
         {(trip.startDate || trip.endDate) && (
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            {trip.startDate && formatLocalDate(trip.startDate)}
+            {trip.startDate && formatLocalDate(trip.startDate, localeOf(lang))}
             {trip.startDate && trip.endDate && " → "}
-            {trip.endDate && formatLocalDate(trip.endDate)}
+            {trip.endDate && formatLocalDate(trip.endDate, localeOf(lang))}
           </p>
         )}
 
@@ -69,7 +74,7 @@ export default function TripView({
 
       {trip.flights.length > 0 && (
         <section className="grid gap-3">
-          <h2 className="text-lg font-semibold">Flights</h2>
+          <h2 className="text-lg font-semibold">{t("trip.flights")}</h2>
           <div className="grid gap-3">
             {trip.flights.map((f) => (
               <FlightCard key={f.id} flight={f} currency={trip.currency} history={histories[f.id] ?? []} />
@@ -80,7 +85,7 @@ export default function TripView({
 
       {trip.stays.length > 0 && (
         <section className="grid gap-3">
-          <h2 className="text-lg font-semibold">Places to stay</h2>
+          <h2 className="text-lg font-semibold">{t("trip.stays")}</h2>
           <div className="grid gap-3">
             {trip.stays.map((s) => (
               <StayCard key={s.id} stay={s} />
@@ -97,6 +102,7 @@ export default function TripView({
 }
 
 function FlightCard({ flight, currency, history }: { flight: TripFlight; currency: string; history: PriceSnapshot[] }) {
+  const t = useT();
   const cardCls = flight.bought
     ? "rounded-xl border border-green-300 bg-green-50 p-4 dark:border-green-700/50 dark:bg-green-950/30"
     : "rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900";
@@ -104,10 +110,10 @@ function FlightCard({ flight, currency, history }: { flight: TripFlight; currenc
   return (
     <div className={cardCls}>
       <div className="mb-3 flex items-center gap-2">
-        <h3 className="flex-1 text-lg font-semibold">{flight.title || "Flight"}</h3>
+        <h3 className="flex-1 text-lg font-semibold">{flight.title || t("flight.default")}</h3>
         {flight.bought && (
           <span className="rounded-md bg-green-600 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
-            Bought
+            {t("flight.bought")}
           </span>
         )}
       </div>
@@ -129,7 +135,7 @@ function FlightCard({ flight, currency, history }: { flight: TripFlight; currenc
           rel="noreferrer"
           className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
         >
-          View on Google Flights
+          {t("flight.viewOnGoogleFlights")}
           <span aria-hidden>↗</span>
         </a>
       )}
@@ -140,17 +146,21 @@ function FlightCard({ flight, currency, history }: { flight: TripFlight; currenc
 }
 
 function ManualFlightSummary({ flight, currency }: { flight: TripFlight; currency: string }) {
+  const t = useT();
+  const { lang } = useLang();
   const cost = parseCost(flight.manualCost ?? "");
   return (
     <dl className="grid grid-cols-3 gap-3 rounded-lg bg-neutral-50/80 p-3 text-sm dark:bg-neutral-950/50">
-      <Field label="Depart">{flight.manualDepartDate ? formatLocalDate(flight.manualDepartDate) : "—"}</Field>
-      <Field label="Return">{flight.manualReturnDate ? formatLocalDate(flight.manualReturnDate) : "—"}</Field>
-      <Field label="Cost">{cost > 0 ? formatMoney(cost, currency) : "—"}</Field>
+      <Field label={t("flight.depart")}>{flight.manualDepartDate ? formatLocalDate(flight.manualDepartDate, localeOf(lang)) : "—"}</Field>
+      <Field label={t("flight.return")}>{flight.manualReturnDate ? formatLocalDate(flight.manualReturnDate, localeOf(lang)) : "—"}</Field>
+      <Field label={t("flight.cost")}>{cost > 0 ? formatMoney(cost, currency) : "—"}</Field>
     </dl>
   );
 }
 
 function PriceHistory({ history, currency }: { history: PriceSnapshot[]; currency?: string }) {
+  const t = useT();
+  const { lang } = useLang();
   if (history.length === 0) return null;
 
   const valid = history.filter((s) => s.price !== undefined) as Array<PriceSnapshot & { price: number }>;
@@ -166,18 +176,18 @@ function PriceHistory({ history, currency }: { history: PriceSnapshot[]; currenc
   return (
     <details className="mt-3 rounded-lg bg-neutral-50/80 p-3 text-xs dark:bg-neutral-950/50">
       <summary className="cursor-pointer font-medium text-neutral-700 dark:text-neutral-300">
-        Price history ({history.length} snapshot{history.length !== 1 ? "s" : ""})
+        {t("history.title", { count: history.length })}
       </summary>
 
       {showChart && (
         <div className="mt-3 grid gap-2">
           <Sparkline values={prices} width={240} height={48} />
           <dl className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] tabular-nums text-neutral-500">
-            <Stat label="Now" value={formatMoney(latest, currency)} />
-            <Stat label="Min" value={formatMoney(min, currency)} />
-            <Stat label="Max" value={formatMoney(max, currency)} />
+            <Stat label={t("history.now")} value={formatMoney(latest, currency)} />
+            <Stat label={t("history.min")} value={formatMoney(min, currency)} />
+            <Stat label={t("history.max")} value={formatMoney(max, currency)} />
             <Stat
-              label="Δ"
+              label={t("history.delta")}
               value={`${change >= 0 ? "+" : ""}${formatMoney(change, currency)}`}
               tone={change < 0 ? "good" : change > 0 ? "bad" : undefined}
             />
@@ -188,9 +198,9 @@ function PriceHistory({ history, currency }: { history: PriceSnapshot[]; currenc
       <ul className={`grid gap-0.5 tabular-nums ${showChart ? "mt-3 border-t border-neutral-200 pt-2 dark:border-neutral-800" : "mt-2"}`}>
         {recent.map((s, i) => (
           <li key={i} className="flex justify-between text-neutral-500">
-            <span>{new Date(s.at).toLocaleString()}</span>
+            <span>{new Date(s.at).toLocaleString(localeOf(lang))}</span>
             <span>
-              {s.price !== undefined ? formatMoney(s.price, s.currency ?? currency) : (s.error ? "(failed)" : "—")}
+              {s.price !== undefined ? formatMoney(s.price, s.currency ?? currency) : (s.error ? t("history.failed") : "—")}
             </span>
           </li>
         ))}
@@ -215,6 +225,8 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "go
 }
 
 function StayCard({ stay }: { stay: Stay }) {
+  const t = useT();
+  const { lang } = useLang();
   const nights = nightsBetween(stay.startDate, stay.endDate);
   const cardCls = stay.bought
     ? "rounded-xl border border-green-300 bg-green-50 p-4 dark:border-green-700/50 dark:bg-green-950/30"
@@ -222,38 +234,38 @@ function StayCard({ stay }: { stay: Stay }) {
   return (
     <div className={cardCls}>
       <div className="mb-2 flex items-center gap-2">
-        <h3 className="flex-1 text-lg font-semibold">{stay.city || "Stay"}</h3>
+        <h3 className="flex-1 text-lg font-semibold">{stay.city || t("stay.default")}</h3>
         {nights > 0 && (
           <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
-            {nights} night{nights !== 1 ? "s" : ""}
+            {t("trip.nights", { count: nights })}
           </span>
         )}
         {stay.bought && (
           <span className="rounded-md bg-green-600 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
-            Booked
+            {t("stay.booked")}
           </span>
         )}
       </div>
       {stay.address && <p className="text-sm text-neutral-600 dark:text-neutral-400">{stay.address}</p>}
       <p className="mt-1 text-xs text-neutral-500">
-        {stay.startDate && formatLocalDate(stay.startDate)}
+        {stay.startDate && formatLocalDate(stay.startDate, localeOf(lang))}
         {stay.startDate && stay.endDate && " → "}
-        {stay.endDate && formatLocalDate(stay.endDate)}
+        {stay.endDate && formatLocalDate(stay.endDate, localeOf(lang))}
       </p>
     </div>
   );
 }
 
 function BudgetSection({ trip }: { trip: Trip }) {
+  const t = useT();
   type Row = { id: string; icon: string; label: string; cost: number; costDisplay: string; notes?: string };
   const tc = trip.currency;
   const flightRows: Row[] = trip.flights
     .filter((f) => f.bought)
     .map((f) => {
       const it = f.itinerary;
-      const label = f.title || (it ? `${it.outbound.legs[0]?.origin} → ${it.outbound.legs[it.outbound.legs.length - 1]?.destination}` : "Flight");
+      const label = f.title || (it ? `${it.outbound.legs[0]?.origin} → ${it.outbound.legs[it.outbound.legs.length - 1]?.destination}` : t("flight.default"));
       const cost = it ? (it.price ?? 0) : parseCost(f.manualCost ?? "");
-      // Imported flights stay in their scraped currency; manual flights use trip currency.
       const display = it ? formatMoney(cost, it.currency) : formatMoney(cost, tc);
       return { id: `f-${f.id}`, icon: "✈", label, cost, costDisplay: cost > 0 ? display : "—" };
     });
@@ -261,7 +273,8 @@ function BudgetSection({ trip }: { trip: Trip }) {
     .filter((s) => s.bought)
     .map((s) => {
       const cost = parseCost(s.cost);
-      return { id: `s-${s.id}`, icon: "🏨", label: s.city ? `Stay in ${s.city}` : "Stay", cost, costDisplay: cost > 0 ? formatMoney(cost, tc) : "—" };
+      const label = s.city ? t("stay.stayIn", { city: s.city }) : t("stay.default");
+      return { id: `s-${s.id}`, icon: "🏨", label, cost, costDisplay: cost > 0 ? formatMoney(cost, tc) : "—" };
     });
   const itemRows: Row[] = trip.budget.map((b: BudgetItem) => {
     const cost = parseCost(b.cost);
@@ -272,7 +285,7 @@ function BudgetSection({ trip }: { trip: Trip }) {
 
   return (
     <section className="grid gap-3">
-      <h2 className="text-lg font-semibold">Budget</h2>
+      <h2 className="text-lg font-semibold">{t("trip.budget")}</h2>
       <div className="grid gap-1.5">
         {all.map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm dark:bg-neutral-900">
@@ -285,7 +298,7 @@ function BudgetSection({ trip }: { trip: Trip }) {
           </div>
         ))}
         <div className="mt-1 flex items-baseline justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
-          <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total</span>
+          <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{t("trip.budget.total")}</span>
           <span className="text-xl font-semibold tabular-nums">{formatMoney(total, tc)}</span>
         </div>
       </div>

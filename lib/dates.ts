@@ -18,9 +18,9 @@ function parseLocalDate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-export function formatLocalDate(iso: string): string {
+export function formatLocalDate(iso: string, locale?: string): string {
   if (!iso) return "";
-  return parseLocalDate(iso).toLocaleDateString(undefined, {
+  return parseLocalDate(iso).toLocaleDateString(locale, {
     weekday: "short",
     month: "short",
     day: "numeric",

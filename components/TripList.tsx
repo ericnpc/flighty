@@ -5,18 +5,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Trip } from "@/lib/types";
 import { createTripApi, deleteTripApi, importTripApi, listTripsApi } from "@/lib/api-client";
+import { useT } from "@/lib/i18n";
 
 const IS_STATIC = process.env.NEXT_PUBLIC_STATIC === "1";
 
-function formatDateRange(start: string, end: string): string {
-  if (!start && !end) return "Dates not set";
-  if (start && !end) return `From ${start}`;
-  if (!start && end) return `Until ${end}`;
-  return `${start} → ${end}`;
+function useFormatDateRange(): (start: string, end: string) => string {
+  const t = useT();
+  return (start, end) => {
+    if (!start && !end) return t("list.summary.dates.none");
+    if (start && !end) return t("list.summary.dates.from", { start });
+    if (!start && end) return t("list.summary.dates.until", { end });
+    return t("list.summary.dates.range", { start, end });
+  };
 }
 
 export default function TripList({ initialTrips }: { initialTrips: Trip[] }) {
   const router = useRouter();
+  const t = useT();
+  const formatDateRange = useFormatDateRange();
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [importable, setImportable] = useState<Trip[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,62 +77,61 @@ export default function TripList({ initialTrips }: { initialTrips: Trip[] }) {
   return (
     <div className="grid gap-4">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold">Your trips</h1>
+        <h1 className="text-2xl font-semibold">{t("list.title")}</h1>
         {!IS_STATIC && (
           <button
             onClick={handleNew}
             disabled={busy}
             className="rounded-xl bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
           >
-            + New trip
+            {t("list.new")}
           </button>
         )}
       </div>
 
       {!IS_STATIC && importable && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700/50 dark:bg-amber-950/30">
-          Found {importable.length} trip{importable.length !== 1 ? "s" : ""} in browser storage from before the
-          filesystem migration.{" "}
+          {t("list.import.banner", { count: importable.length })}{" "}
           <button onClick={handleImport} disabled={busy} className="font-medium underline disabled:opacity-50">
-            Import to data/
+            {t("list.import.action")}
           </button>
         </div>
       )}
 
       {trips.length === 0 ? (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          {IS_STATIC ? "No trips published yet." : "No trips yet. Create one to start adding flights and places to stay."}
+          {IS_STATIC ? t("list.empty.published") : t("list.empty.editor")}
         </p>
       ) : (
         <div className="grid gap-3">
-          {trips.map((t) => {
-            const flightCount = t.flights.length;
-            const stayCount = t.stays.length;
+          {trips.map((trip) => {
+            const flightCount = trip.flights.length;
+            const stayCount = trip.stays.length;
             return (
-              <div key={t.id} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-                <Link href={`/trips/${t.id}`} className="flex-1 grid gap-1">
-                  <div className="text-base font-medium">{t.name || "Untitled trip"}</div>
+              <div key={trip.id} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+                <Link href={`/trips/${trip.id}`} className="flex-1 grid gap-1">
+                  <div className="text-base font-medium">{trip.name || t("trip.untitled")}</div>
                   <div className="text-xs text-neutral-500">
-                    {formatDateRange(t.startDate, t.endDate)}
-                    {t.destinations.length > 0 && ` · ${t.destinations.join(" → ")}`}
+                    {formatDateRange(trip.startDate, trip.endDate)}
+                    {trip.destinations.length > 0 && ` · ${trip.destinations.join(" → ")}`}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {flightCount} flight{flightCount !== 1 ? "s" : ""} · {stayCount} stay{stayCount !== 1 ? "s" : ""}
+                    {t("list.summary.flights", { count: flightCount })} · {t("list.summary.stays", { count: stayCount })}
                   </div>
                 </Link>
                 {!IS_STATIC && (
                   <>
                     <Link
-                      href={`/trips/${t.id}/edit`}
+                      href={`/trips/${trip.id}/edit`}
                       className="rounded-md bg-neutral-100 px-2.5 py-1 text-xs hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
                     >
-                      Edit
+                      {t("list.edit")}
                     </Link>
                     <button
-                      onClick={() => handleDelete(t.id)}
+                      onClick={() => handleDelete(trip.id)}
                       className="rounded-md bg-neutral-100 px-2.5 py-1 text-xs hover:bg-red-100 hover:text-red-700 dark:bg-neutral-800 dark:hover:bg-red-950 dark:hover:text-red-300"
                     >
-                      Delete
+                      {t("list.delete")}
                     </button>
                   </>
                 )}
