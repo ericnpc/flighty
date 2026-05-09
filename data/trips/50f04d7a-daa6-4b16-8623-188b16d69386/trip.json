@@ -1,0 +1,62 @@
+{
+  "id": "50f04d7a-daa6-4b16-8623-188b16d69386",
+  "name": "🗽 USA Work Trip",
+  "startDate": "2026-05-11",
+  "endDate": "2026-05-22",
+  "destinations": [
+    "NYC",
+    "SF",
+    "LA"
+  ],
+  "notes": "",
+  "mapsUrl": "<iframe src=\"https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6512695.487787969!2d-124.58908625916071!3d37.15205527291143!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fb9fe5f285e3d%3A0x8b5109a227086f55!2sCalifornia%2C%20USA!5e0!3m2!1sen!2sde!4v1778276697822!5m2!1sen!2sde\" width=\"600\" height=\"450\" style=\"border:0;\" allowfullscreen=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer-when-downgrade\"></iframe>",
+  "flights": [
+    {
+      "id": "26205849-0b54-49b2-83aa-1568185d6fe7",
+      "title": "Berlin a EEUU y vuelta",
+      "bought": true,
+      "manualDepartDate": "2026-05-11",
+      "manualReturnDate": "2026-05-22"
+    },
+    {
+      "id": "db59cd93-c1ac-4f4a-ab01-14d705641162",
+      "title": "Vuelos Internos",
+      "bought": true,
+      "manualDepartDate": "2026-05-16",
+      "manualReturnDate": "2026-05-22",
+      "manualCost": "464"
+    }
+  ],
+  "stays": [
+    {
+      "id": "0c292304-f531-403d-9ffb-2b8eb5b34759",
+      "city": "NYC",
+      "address": "",
+      "startDate": "2026-05-15",
+      "endDate": "2026-05-16",
+      "cost": "258",
+      "bought": true
+    },
+    {
+      "id": "eb579b1c-aa06-4247-be95-deb075360c7b",
+      "city": "SF",
+      "address": "",
+      "startDate": "2026-05-16",
+      "endDate": "2026-05-20",
+      "cost": "590",
+      "bought": true
+    },
+    {
+      "id": "518d6922-403a-4acd-ad5d-937b7ae400ff",
+      "city": "LA",
+      "address": "",
+      "startDate": "2026-05-20",
+      "endDate": "2026-05-22",
+      "cost": "430",
+      "bought": true
+    }
+  ],
+  "budget": [],
+  "createdAt": "2026-05-08T21:44:09.475Z",
+  "currency": "EUR"
+}

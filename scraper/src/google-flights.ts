@@ -93,12 +93,13 @@ function extractPrices(text: string): { symbol: string; amount: number }[] {
   return out;
 }
 
-// Force the URL into English/USD so the price always renders in a format we
-// understand. The `tfs` (itinerary) is unchanged; only display locale shifts.
-function normalizeUrl(url: string): string {
+// Force English locale and the requested currency. The `tfs` (itinerary)
+// is unchanged; only display locale + currency shifts.
+function normalizeUrl(url: string, currency: string): string {
   const u = new URL(url);
   u.searchParams.set("hl", "en");
   u.searchParams.set("gl", "US");
+  u.searchParams.set("curr", currency);
   return u.toString();
 }
 
@@ -140,11 +141,11 @@ type PageScrape = {
   pageError?: string;
 };
 
-async function loadAndExtract(url: string): Promise<PageScrape> {
+async function loadAndExtract(url: string, currency: string): Promise<PageScrape> {
   const ctx = await getContext();
   const page = await ctx.newPage();
   try {
-    await page.goto(normalizeUrl(url), { waitUntil: "domcontentloaded", timeout: 45_000 });
+    await page.goto(normalizeUrl(url, currency), { waitUntil: "domcontentloaded", timeout: 45_000 });
 
     if (page.url().includes("consent.google.com")) {
       const button = page.locator(
@@ -196,10 +197,15 @@ function withTimes(direction: OneWay, t?: { depart: string; arrive: string; arri
   return { ...direction, departTime: t.depart, arriveTime: t.arrive, arriveDayOffset: t.arriveDayOffset };
 }
 
-export async function scrapeItinerary(url: string): Promise<Itinerary & { _debugSample?: string }> {
+export async function scrapeItinerary(
+  url: string,
+  currency?: string,
+): Promise<Itinerary & { _debugSample?: string }> {
   const parsed = parseTfs(tfsFromUrl(url));
-  const expectedCurrency = detectCurrency(url);
-  const { priceMatches, text, pageError } = await loadAndExtract(url);
+  // Caller-supplied currency wins over whatever's in the URL — the trip
+  // controls the price currency, not the link the user happened to copy.
+  const targetCurrency = currency ?? detectCurrency(url);
+  const { priceMatches, text, pageError } = await loadAndExtract(url, targetCurrency);
 
   // Booking pages lead with the main fare; later prices are alternatives.
   const main = priceMatches[0];
@@ -213,7 +219,7 @@ export async function scrapeItinerary(url: string): Promise<Itinerary & { _debug
     outbound: withTimes(parsed.outbound, directionTimes[0]),
     return: parsed.return ? withTimes(parsed.return, directionTimes[1]) : undefined,
     price: main?.amount,
-    currency: main ? (SYMBOL_TO_CURRENCY[main.symbol] ?? expectedCurrency) : undefined,
+    currency: main ? (SYMBOL_TO_CURRENCY[main.symbol] ?? targetCurrency) : undefined,
     priceError: pageError,
     scrapedAt: new Date().toISOString(),
     _debugSample: process.env.DEBUG_PAGE_TEXT ? text.replace(/\s+/g, " ").slice(0, 4000) : undefined,

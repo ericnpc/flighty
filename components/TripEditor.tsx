@@ -1,17 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BudgetItem, Stay, Trip, TripFlight } from "@/lib/types";
-import {
-  deleteTrip,
-  getTrip,
-  newBudgetItem,
-  newFlight,
-  newStay,
-  saveTrip,
-} from "@/lib/storage";
+import type { BudgetItem, Stay, Trip, TripCurrency, TripFlight } from "@/lib/types";
+import { newBudgetItem, newFlight, newStay } from "@/lib/defaults";
+import { deleteTripApi, getTripApi, refreshFlightApi, saveTripApi } from "@/lib/api-client";
 import { isInvalidRange, nightsBetween } from "@/lib/dates";
 import { toEmbedSrc } from "@/lib/maps";
 import EllipsisMenu from "./EllipsisMenu";
@@ -29,19 +23,35 @@ export default function TripEditor({ id }: { id: string }) {
   const router = useRouter();
   const [trip, setTrip] = useState<Trip | null | "missing">(null);
   const [destText, setDestText] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const lastSaved = useRef<string>("");
 
   useEffect(() => {
-    const t = getTrip(id);
-    if (!t) {
-      setTrip("missing");
-      return;
-    }
-    setTrip(t);
-    setDestText(t.destinations.join(", "));
+    getTripApi(id).then((t) => {
+      if (!t) {
+        setTrip("missing");
+        return;
+      }
+      setTrip(t);
+      setDestText(t.destinations.join(", "));
+      lastSaved.current = JSON.stringify(t);
+    });
   }, [id]);
 
+  // Debounced autosave: 500ms after last change.
   useEffect(() => {
-    if (trip && trip !== "missing") saveTrip(trip);
+    if (!trip || trip === "missing") return;
+    const serialized = JSON.stringify(trip);
+    if (serialized === lastSaved.current) return;
+    const t = setTimeout(() => {
+      saveTripApi(trip)
+        .then(() => {
+          lastSaved.current = serialized;
+          setSaveError(null);
+        })
+        .catch((err) => setSaveError((err as Error).message));
+    }, 500);
+    return () => clearTimeout(t);
   }, [trip]);
 
   const embedSrc = useMemo(
@@ -61,7 +71,6 @@ export default function TripEditor({ id }: { id: string }) {
   function update(patch: Partial<Trip>) {
     setTrip((t) => (t && t !== "missing" ? { ...t, ...patch } : t));
   }
-
   function updateFlight(flightId: string, next: TripFlight) {
     setTrip((t) => (t && t !== "missing" ? { ...t, flights: t.flights.map((f) => (f.id === flightId ? next : f)) } : t));
   }
@@ -71,7 +80,6 @@ export default function TripEditor({ id }: { id: string }) {
   function addFlight() {
     setTrip((t) => (t && t !== "missing" ? { ...t, flights: [...t.flights, newFlight()] } : t));
   }
-
   function updateStay(stayId: string, next: Stay) {
     setTrip((t) => (t && t !== "missing" ? { ...t, stays: t.stays.map((s) => (s.id === stayId ? next : s)) } : t));
   }
@@ -81,7 +89,6 @@ export default function TripEditor({ id }: { id: string }) {
   function addStay() {
     setTrip((t) => (t && t !== "missing" ? { ...t, stays: [...t.stays, newStay()] } : t));
   }
-
   function updateBudget(itemId: string, next: BudgetItem) {
     setTrip((t) => (t && t !== "missing" ? { ...t, budget: t.budget.map((b) => (b.id === itemId ? next : b)) } : t));
   }
@@ -92,10 +99,19 @@ export default function TripEditor({ id }: { id: string }) {
     setTrip((t) => (t && t !== "missing" ? { ...t, budget: [...t.budget, newBudgetItem()] } : t));
   }
 
+  async function refreshFlight(flightId: string) {
+    // Trip needs to be saved first so the server has the URL the user just typed.
+    await saveTripApi(trip as Trip);
+    lastSaved.current = JSON.stringify(trip);
+    const updated = await refreshFlightApi(id, flightId);
+    setTrip(updated);
+    lastSaved.current = JSON.stringify(updated);
+  }
+
   const tripId = trip.id;
-  function handleDelete() {
+  async function handleDelete() {
     if (!confirm("Delete this trip?")) return;
-    deleteTrip(tripId);
+    await deleteTripApi(tripId);
     router.push("/");
   }
 
@@ -105,10 +121,11 @@ export default function TripEditor({ id }: { id: string }) {
 
   return (
     <div className="grid gap-6">
-      <div>
-        <Link href="/" className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
-          ← All trips
+      <div className="flex items-center justify-between">
+        <Link href={`/trips/${trip.id}`} className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
+          ← View
         </Link>
+        {saveError && <span className="text-xs text-red-600">Save failed: {saveError}</span>}
       </div>
 
       {embedSrc && (
@@ -139,7 +156,23 @@ export default function TripEditor({ id }: { id: string }) {
           )}
           <EllipsisMenu label="Trip options">
             {(close) => (
-              <div className="grid gap-3">
+              <div className="grid gap-4">
+                <label className="grid gap-1">
+                  <span className="text-[10px] uppercase tracking-wide text-neutral-500">Currency</span>
+                  <select
+                    className={inputCls}
+                    value={trip.currency}
+                    onChange={(e) => update({ currency: e.target.value as TripCurrency })}
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                  <span className="text-xs text-neutral-500">
+                    Used for the budget total and any manual costs. Imported flights keep their own currency — Refresh
+                    after switching to re-scrape in the new currency.
+                  </span>
+                </label>
+
                 <label className="grid gap-1">
                   <span className="text-[10px] uppercase tracking-wide text-neutral-500">Google Maps link</span>
                   <textarea
@@ -151,8 +184,7 @@ export default function TripEditor({ id }: { id: string }) {
                 </label>
                 {trip.mapsUrl && !embedSrc && (
                   <div className="text-xs text-amber-600 dark:text-amber-400">
-                    Couldn't embed that URL. <code>maps.app.goo.gl</code> short links don't work — use
-                    "Share → Embed map" in Google Maps for the iframe snippet.
+                    Couldn't embed that URL. Use "Share → Embed map" in Google Maps for the iframe snippet.
                   </div>
                 )}
                 {trip.mapsUrl && (
@@ -226,7 +258,13 @@ export default function TripEditor({ id }: { id: string }) {
         ) : (
           <div className="grid gap-3">
             {trip.flights.map((f) => (
-              <FlightEditor key={f.id} flight={f} onChange={(next) => updateFlight(f.id, next)} onRemove={() => removeFlight(f.id)} />
+              <FlightEditor
+                key={f.id}
+                flight={f}
+                onChange={(next) => updateFlight(f.id, next)}
+                onRemove={() => removeFlight(f.id)}
+                onRefresh={() => refreshFlight(f.id)}
+              />
             ))}
           </div>
         )}
@@ -258,6 +296,7 @@ export default function TripEditor({ id }: { id: string }) {
         items={trip.budget}
         flights={trip.flights}
         stays={trip.stays}
+        currency={trip.currency}
         onChange={updateBudget}
         onAdd={addBudget}
         onRemove={removeBudget}

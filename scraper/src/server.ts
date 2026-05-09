@@ -46,7 +46,7 @@ const server = createServer(async (req, res) => {
 
   try {
     const body = await readBody(req);
-    const { url } = JSON.parse(body) as { url?: string };
+    const { url, currency } = JSON.parse(body) as { url?: string; currency?: string };
     if (!url || !isBookingUrl(url)) {
       res.statusCode = 400;
       res.end(JSON.stringify({
@@ -54,7 +54,7 @@ const server = createServer(async (req, res) => {
       }));
       return;
     }
-    const itinerary = await scrapeItinerary(url);
+    const itinerary = await scrapeItinerary(url, currency);
     res.end(JSON.stringify(itinerary));
   } catch (err) {
     console.error("[scraper] error:", err);

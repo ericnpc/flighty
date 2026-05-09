@@ -1,6 +1,7 @@
 node_modules
 .next
 out
+tsconfig.tsbuildinfo
 .env
 .env.local
 .vercel
@@ -8,3 +9,7 @@ out
 .DS_Store
 scraper/dist
 scraper/node_modules
+
+# data/ holds your trips — commit it. Only ignore the placeholder if you
+# don't want it tracked in the same commit as actual trips.
+

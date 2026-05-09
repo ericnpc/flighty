@@ -1,60 +1,138 @@
 # flighty
 
-Personal trip planner with flight price tracking. Make a trip, list your
-flights and places to stay, paste a Google Flights booking link on any
-flight to track its price over time.
+Personal trip planner + flight price tracker. Edit locally, publish a
+read-only static site to GitHub Pages.
 
-Next.js 14 + TypeScript + Tailwind on the front, a small Playwright service
-on the back.
+```
+┌──────────────────────────────────────────────────────┐
+│  data/trips/<id>/                ← single source of  │
+│    trip.json                       truth, git-tracked│
+│    history/<flight-id>.jsonl                         │
+└──────────────────────────────────────────────────────┘
+            ▲                            │
+            │ writes (dev only)          │ reads
+            │                            ▼
+   ┌────────────────┐          ┌──────────────────────┐
+   │  Editor app    │          │  Static site (Pages) │
+   │  npm run dev   │          │  npm run build:static│
+   │  ↳ /api/trips  │          │  ↳ no /api routes    │
+   │  ↳ TripEditor  │          │  ↳ TripView only     │
+   │  ↳ Scraper     │          │  ↳ ./out/            │
+   └────────────────┘          └──────────────────────┘
+```
+
+The same Next.js app serves two modes:
+
+- **`npm run dev`** — full editor. API routes read/write `data/`. Refresh
+  buttons hit the local Playwright scraper.
+- **`npm run build:static`** — exports a read-only site to `out/`. No API
+  routes, no editing UI. Drop `out/` on GitHub Pages.
 
 ## Concepts
 
-- **Trip** — name, start/end dates, destinations, flights, stays.
-- **Flight** — bought-or-not flag, optional Google Flights booking URL,
-  optional notes. If a URL is set, hitting Fetch parses the itinerary
-  (airline, flight number, dates) from the URL and scrapes the live price.
-- **Stay** — city, address, check-in/check-out dates.
+- **Trip** — name, dates, destinations, free-text notes, optional Google
+  Maps embed, plus three child collections: flights, stays, budget.
+- **Flight** — title, optional Google Flights booking URL. With a URL, the
+  itinerary (legs + price) is scraped from Google. Without one, you fill in
+  Depart / Return / Cost manually. Bought toggle adds it to the budget.
+- **Stay** — city, address, check-in/out, cost, bought toggle.
+- **Budget item** — free-form item / cost / notes.
 
-Data lives in `localStorage` under `flighty.trips.v3`. There is no backend
-or account.
+## Filesystem layout
+
+```
+data/
+  trips/
+    <trip-id>/
+      trip.json                ← Trip object, pretty-printed
+      history/
+        <flight-id>.jsonl      ← one price snapshot per line
+                                 { "at", "price", "currency", "error" }
+```
+
+Commit `data/` to git — that's your archive.
+
+## Local setup
+
+Two terminals.
+
+**Scraper** (in `scraper/`):
+```bash
+npm install                 # also installs Playwright Chromium
+cp .env.example .env        # set SCRAPER_TOKEN
+npm run dev                 # http://localhost:8787
+```
+
+**App** (repo root):
+```bash
+npm install
+cp .env.example .env.local  # SCRAPER_URL=http://localhost:8787, same SCRAPER_TOKEN
+npm run dev                 # http://localhost:3000
+```
+
+If you've been using a previous version, your old trips are still in
+browser localStorage. The trip list shows a banner letting you import them
+into `data/` with one click.
+
+## Editing flow
+
+1. **+ New trip** on the home page.
+2. Fill in name, dates, destinations, notes; paste a Google Maps URL via
+   the `⋯` menu if you want an embedded map.
+3. Add **Flights**:
+   - With a Google Flights booking URL: paste it under `⋯`, click Fetch.
+     Itinerary + price come back; Refresh later to update.
+   - Without a URL: just fill in the manual Depart / Return / Cost fields.
+4. Add **Stays** with city / address / dates / cost.
+5. Toggle **Bought** / **Booked** to push items into the auto-budget.
+6. Add ad-hoc **Budget** items for the rest (taxis, food, etc).
+
+Every change autosaves to `data/trips/<id>/trip.json` (debounced 500ms).
+Refreshing a flight scrapes the page, updates `trip.json`, **and**
+appends a snapshot line to `data/trips/<id>/history/<flight-id>.jsonl`.
+
+## Publishing to GitHub Pages
+
+```bash
+npm run build:static          # → out/
+```
+
+That folder is a complete static site. Two ways to deploy:
+
+**Project page** (`https://<user>.github.io/flighty/`):
+```bash
+BASE_PATH=/flighty npm run build:static
+# Push out/ to the gh-pages branch (manually or via a workflow):
+npx gh-pages -d out
+```
+GitHub Pages settings → source: `gh-pages` branch, root.
+
+**User/org page** (`https://<user>.github.io/`): no `BASE_PATH` needed.
+Same steps, push `out/` to a repo named `<user>.github.io`.
+
+The published site contains:
+- `/` — list of trips (read-only)
+- `/trips/<id>/` — read-only trip view with itineraries, stays, budget,
+  and price-history details (all snapshots in the history JSONL show up)
+
+No edit affordances, no API calls. If someone navigates to
+`/trips/<id>/edit/`, they get a static "editing not available here" notice.
 
 ## How price tracking works
 
-A Google Flights booking URL looks like:
+A Google Flights booking URL contains the entire itinerary in its `tfs`
+parameter (base64-url-encoded protobuf). We decode that locally to get the
+exact legs (airline, flight number, dates, airports) — no scraping needed
+for the itinerary itself. Playwright only opens the page to grab the live
+total price + overall direction times.
 
-```
-https://www.google.com/travel/flights/booking?tfs=CBwQAhpsEgoyMDI2LTA4LTI1...
-```
-
-The `tfs` parameter is base64-url-encoded protobuf. We decode it locally
-to get the exact legs (airline, flight number, dates, airports) — no
-scraping needed for the itinerary itself. Playwright only opens the page
-to grab the live total price.
-
-If Google changes the booking-page layout, the itinerary still parses
-correctly; only the price falls back to "Price unknown" until the price
-selector is fixed.
+This means the **itinerary data is rock-solid**; only the price scrape can
+fail. If Google changes the booking-page layout, you still see what you
+booked, just with a `priceError` until the price selector is fixed.
 
 See [scraper/src/tfs.ts](scraper/src/tfs.ts) for the protobuf decoder and
 [scraper/src/google-flights.ts](scraper/src/google-flights.ts) for the
 price scraper.
-
-## Architecture
-
-```
-┌──────────────┐      POST /api/flights       ┌──────────────────┐
-│  Next.js app │ ───────────────────────────▶ │  Playwright      │
-│  (Vercel)    │   ◀─── itinerary JSON ──     │  scraper (local) │
-└──────────────┘                              └──────────────────┘
-                                                       │
-                                                       ▼
-                                             google.com/travel/flights
-```
-
-Vercel doesn't run Playwright in serverless, so the scraper lives in
-[scraper/](scraper/) as a standalone Node service. The Next.js API route
-[app/api/flights/route.ts](app/api/flights/route.ts) proxies to it via the
-`SCRAPER_URL` env var.
 
 ## Heads-up
 
@@ -66,101 +144,54 @@ Vercel doesn't run Playwright in serverless, so the scraper lives in
 - The price selector uses "first currency-shaped string in document order
   on a booking page", with locale forced to `en/US`. More robust than CSS
   classes, but still best-effort.
-- For anything beyond personal tinkering, swap in a real API:
-  [Amadeus](https://developers.amadeus.com/),
-  [Duffel](https://duffel.com/), or
-  [Kiwi Tequila](https://tequila.kiwi.com/) (free tier).
-
-## Setup
-
-### Two terminals
-
-**Scraper** (in `scraper/`):
-
-```bash
-npm install                 # also installs Playwright Chromium
-cp .env.example .env
-npm run dev                 # listens on http://localhost:8787
-```
-
-**Next.js app** (in repo root):
-
-```bash
-npm install
-cp .env.example .env.local
-npm run dev                 # http://localhost:3000
-```
-
-Set the same `SCRAPER_TOKEN` in both `.env` files.
-
-### Using it
-
-1. Open `http://localhost:3000`.
-2. Click **+ New trip**.
-3. Fill in name, dates, destinations.
-4. **+ Add flight**, paste a booking URL, click **Fetch** — itinerary +
-   price appear inline.
-5. **+ Add stay**, fill in city / address / check-in / check-out.
-6. Come back later, click **Refresh** on a flight to pull the latest price.
-
-To get a booking URL: search on
-[google.com/travel/flights](https://www.google.com/travel/flights), click
-a flight, click **Continue** until the URL contains `/booking?tfs=...`.
-Copy that URL.
-
-### Deploying the app to Vercel
-
-```bash
-vercel
-```
-
-Set in Vercel:
-- `SCRAPER_URL` → your ngrok or VPS URL (see below)
-- `SCRAPER_TOKEN` → shared secret
-
-The scraper can't run in Vercel serverless. Two options:
-
-**ngrok (quick).**
-```bash
-# in scraper/
-npm run dev
-# in another terminal
-ngrok http 8787
-```
-Paste the `https://*.ngrok-free.app` URL into Vercel's `SCRAPER_URL`.
-
-**Railway / Fly / VPS.** Deploy `scraper/` as a long-running Node service.
-Anything that runs Node + Chromium works. Railway is simplest — point at
-`scraper/`, start command `npm run start`.
+- If you'd rather use a real API, [Amadeus](https://developers.amadeus.com/),
+  [Duffel](https://duffel.com/), and
+  [Kiwi Tequila](https://tequila.kiwi.com/) all have free tiers and will
+  outlive any scraper. Replace `scrapeItinerary` and you're done.
 
 ## Project layout
 
 ```
 app/
-  page.tsx                  Trip list (home)
-  trips/[id]/page.tsx       Trip editor
-  api/flights/route.ts      Proxies { url } to the scraper
+  page.tsx                     Trip list (Server Component, reads filesystem)
+  trips/[id]/page.tsx          Read-only public view (Server Component)
+  trips/[id]/edit/             Editor route
+    page.tsx                   Server entry (generateStaticParams)
+    EditClient.tsx             Client component, mounts TripEditor
+  api/                         Dev-only — moved aside during static build
+    trips/route.ts             GET list, POST create/import
+    trips/[id]/route.ts        GET, PUT, DELETE
+    trips/[id]/refresh/[fid]/  POST: scrape flight, update + append history
+    flights/route.ts           Generic { url } scrape proxy (legacy)
 components/
-  TripList.tsx              List of trips on home
-  TripEditor.tsx            Trip name/dates/destinations + flights + stays
-  FlightEditor.tsx          One flight row, with fetch/refresh price
-  StayEditor.tsx            One stay row
+  TripList.tsx                 Home list (Client; works in both modes)
+  TripEditor.tsx               Editor (Client; debounced API saves)
+  TripView.tsx                 Read-only renderer (server-friendly)
+  FlightEditor.tsx, StayEditor.tsx, BudgetEditor.tsx
+  EllipsisMenu.tsx, ItineraryDisplay.tsx
 lib/
-  types.ts                  Trip, TripFlight, Stay, Itinerary, Leg
-  storage.ts                localStorage CRUD for trips
+  types.ts                     Trip, TripFlight, Stay, etc.
+  fs-storage.ts                Node fs CRUD on data/, plus history JSONL
+  api-client.ts                Browser fetch wrappers
+  defaults.ts                  Migration + factory helpers
+  dates.ts, maps.ts            Small helpers
 scraper/
-  src/server.ts             HTTP server, POST /scrape { url }
-  src/tfs.ts                base64-url + protobuf decoder for the tfs param
-  src/google-flights.ts     Orchestrates: parse tfs + scrape price
+  src/server.ts                HTTP server, POST /scrape { url }
+  src/tfs.ts                   base64-url + protobuf decoder
+  src/google-flights.ts        Playwright orchestration
+data/                          Your trips. Commit it.
+  trips/<id>/trip.json
+  trips/<id>/history/<fid>.jsonl
+scripts/build-static.mjs       Moves app/api aside, runs `next build`
 ```
 
 ## Notes
 
 - Consent screens: the scraper pre-sets `CONSENT` and `SOCS` cookies and
   uses a persistent browser profile (`scraper/.playwright-data/`). If
-  Google still shows a consent wall, run with `HEADED=1`, click through
-  once, the profile remembers it:
-  ```bash
-  HEADED=1 npm run dev
-  ```
+  Google still shows a wall, run `HEADED=1 npm run dev` once, click
+  through, and the profile remembers it.
 - Don't hammer Google. One refresh at a time.
+- The `/api/flights` route still exists for back-compat (generic
+  `{ url }` proxy). Use `/api/trips/<id>/refresh/<fid>` for trip-aware
+  refresh — that one writes history.

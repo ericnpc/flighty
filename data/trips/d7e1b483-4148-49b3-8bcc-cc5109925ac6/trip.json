@@ -1,0 +1,92 @@
+{
+  "id": "d7e1b483-4148-49b3-8bcc-cc5109925ac6",
+  "name": "👵🏻 Abuelita",
+  "startDate": "2026-08-27",
+  "endDate": "2026-09-07",
+  "destinations": [
+    "Milan",
+    "Florence",
+    "Sorrento"
+  ],
+  "notes": "",
+  "mapsUrl": "<iframe src=\"https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d24226.211315515906!2d14.354591843292608!3d40.623785720029794!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x133b99536dbf5b61%3A0x2644eb57abc0ce40!2s80067%20Sorrento%2C%20Metropolitan%20City%20of%20Naples%2C%20Italy!5e0!3m2!1sen!2sde!4v1778276311786!5m2!1sen!2sde\" width=\"600\" height=\"450\" style=\"border:0;\" allowfullscreen=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer-when-downgrade\"></iframe>",
+  "flights": [
+    {
+      "id": "7118780d-bb37-446d-9868-974cd79c5b0a",
+      "title": "",
+      "bought": false,
+      "googleFlightsUrl": "https://www.google.com/travel/flights/booking?tfs=CBwQAhpnEgoyMDI2LTA4LTI3Ih8KA01WRBIKMjAyNi0wOC0yNxoDTUFEKgJJQjIDMTcwIh8KA01BRBIKMjAyNi0wOC0yOBoDTElOKgJJQjIDNjY1KAFqDAgDEggvbS8wOWpwM3IHCAESA0xJThpuEgoyMDI2LTA5LTA3IiAKA05BUBIKMjAyNi0wOS0wNxoDTUFEKgJJQjIEMTgzNiIfCgNNQUQSCjIwMjYtMDktMDcaA01WRCoCSUIyAzE2OWoPCAMSCy9nLzEyMzNmMjJucgwIAxIIL20vMDlqcDNAAUgBcAGCAQsI____________AZgBAw&tfu=CnhDalJJY25ZME9XSXdkR2xQYkdkQlIzUlBVMEZDUnkwdExTMHRMUzB0TFhkaVltWjJNMEZCUVVGQlIyNHRWRFpuUWxSSVFpMUJFZzVKUWpFNE16WjhTVUl4Tmprak1Sb0xDTERDQ3hBQ0dnTlZVMFE0SEhDd3dncz0SAggAIgA&hl=es-419&curr=USD",
+      "itinerary": {
+        "id": "ed072e7813aadec6",
+        "url": "https://www.google.com/travel/flights/booking?tfs=CBwQAhpnEgoyMDI2LTA4LTI3Ih8KA01WRBIKMjAyNi0wOC0yNxoDTUFEKgJJQjIDMTcwIh8KA01BRBIKMjAyNi0wOC0yOBoDTElOKgJJQjIDNjY1KAFqDAgDEggvbS8wOWpwM3IHCAESA0xJThpuEgoyMDI2LTA5LTA3IiAKA05BUBIKMjAyNi0wOS0wNxoDTUFEKgJJQjIEMTgzNiIfCgNNQUQSCjIwMjYtMDktMDcaA01WRCoCSUIyAzE2OWoPCAMSCy9nLzEyMzNmMjJucgwIAxIIL20vMDlqcDNAAUgBcAGCAQsI____________AZgBAw&tfu=CnhDalJJY25ZME9XSXdkR2xQYkdkQlIzUlBVMEZDUnkwdExTMHRMUzB0TFhkaVltWjJNMEZCUVVGQlIyNHRWRFpuUWxSSVFpMUJFZzVKUWpFNE16WjhTVUl4Tmprak1Sb0xDTERDQ3hBQ0dnTlZVMFE0SEhDd3dncz0SAggAIgA&hl=es-419&curr=USD",
+        "outbound": {
+          "departDate": "2026-08-27",
+          "legs": [
+            {
+              "origin": "MVD",
+              "destination": "MAD",
+              "date": "2026-08-27",
+              "airline": "IB",
+              "flightNumber": "170"
+            },
+            {
+              "origin": "MAD",
+              "destination": "LIN",
+              "date": "2026-08-28",
+              "airline": "IB",
+              "flightNumber": "665"
+            }
+          ],
+          "departTime": "9:35 PM",
+          "arriveTime": "7:35 PM",
+          "arriveDayOffset": 1
+        },
+        "return": {
+          "departDate": "2026-09-07",
+          "legs": [
+            {
+              "origin": "NAP",
+              "destination": "MAD",
+              "date": "2026-09-07",
+              "airline": "IB",
+              "flightNumber": "1836"
+            },
+            {
+              "origin": "MAD",
+              "destination": "MVD",
+              "date": "2026-09-07",
+              "airline": "IB",
+              "flightNumber": "169"
+            }
+          ],
+          "departTime": "6:00 AM",
+          "arriveTime": "7:35 PM",
+          "arriveDayOffset": 0
+        },
+        "price": 1888,
+        "currency": "USD",
+        "scrapedAt": "2026-05-08T21:31:51.518Z",
+        "_debugSample": "Skip to main content Accessibility feedback Change appearance Sign in Loading results Itinerary summary Share Multi-city trip Economy 1 passenger $1,888 Lowest total price Selected flights Track prices Thu, Aug 27 9:35 PM – 7:35 PM+1 Iberia 17 hr MVD–LIN 1 stop 2 hr 50 min MAD 821 kg CO2e +10% emissions Mon, Sep 7 6:00 AM – 7:35 PM IberiaOperated by Iberia Express 18 hr 35 min NAP–MVD 1 stop 3 hr 5 min MAD 830 kg CO2e +7% emissions Booking options How options are ranked Learn more about booking options Book with IberiaAirline Hide options Economy Basic $1,888 UYU 75,248 Seat selection for a fee Ticket changes for a fee No refunds No priority boarding 1 free carry-on 1st checked bag available for a fee Continue Economy Optimal $2,063 UYU 82,231 Seat selection for a fee Ticket changes for a fee No refunds No priority boarding 1 free carry-on 1st checked bag free Continue Economy Comfort $2,282 UYU 90,960 Free seat selection Ticket changes for a fee Partial refund 1 free carry-on 1st checked bag free Continue Economy Flexible $2,358 UYU 94,014 Free seat selection Free change, possible fare difference Full refunds 1 free carry-on 1st checked bag free Continue Fare and baggage conditions apply to your entire trip. Bag fees may be higher at the airport. Iberia bag policy For non-refundable fare options, taxes may be refundable. Book with Gotogate $2,284 Continue View options Prices include required taxes + fees for 1 adult. Optional charges and bag fees may apply. Language​English (United States) Location​United States CurrencyUSD About Privacy Terms Join user studies Feedback Help Center Displayed currencies may differ from the currencies used to purchase flights. Learn more "
+      },
+      "lastCheckedAt": "2026-05-08T21:31:51.528Z"
+    },
+    {
+      "id": "075cacd4-74ca-44ba-9bd6-6c5d98c47dd6",
+      "title": "",
+      "bought": false
+    }
+  ],
+  "stays": [
+    {
+      "id": "b1f4dcc2-6f25-4ba4-96d2-7da46f0456c6",
+      "city": "",
+      "address": "",
+      "startDate": "",
+      "endDate": "",
+      "cost": "",
+      "bought": false
+    }
+  ],
+  "budget": [],
+  "createdAt": "2026-05-08T21:02:33.983Z"
+}

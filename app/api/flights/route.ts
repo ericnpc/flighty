@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { Itinerary } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 // TODO: Set SCRAPER_URL in .env.local (or Vercel env). For local dev, run the
 // scraper service in ./scraper and expose it with `ngrok http 8787`, then put
@@ -31,7 +30,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { url } = (await req.json()) as { url?: string };
+  const { url, currency } = (await req.json()) as { url?: string; currency?: string };
   if (!url || !isBookingUrl(url)) {
     return NextResponse.json(
       { error: "Provide a google.com/travel/flights/booking URL." },
@@ -45,7 +44,7 @@ export async function POST(req: Request) {
       "Content-Type": "application/json",
       ...(SCRAPER_TOKEN ? { Authorization: `Bearer ${SCRAPER_TOKEN}` } : {}),
     },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, currency }),
     cache: "no-store",
   });
 

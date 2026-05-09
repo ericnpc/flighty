@@ -1,17 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { Itinerary, Leg, OneWay, TripFlight } from "@/lib/types";
-import { formatLocalDate } from "@/lib/dates";
+import type { TripFlight } from "@/lib/types";
 import EllipsisMenu from "./EllipsisMenu";
+import { ItineraryPanel } from "./ItineraryDisplay";
 
 const inputCls =
   "w-full rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-neutral-300";
-
-function formatPrice(price: number, currency?: string): string {
-  if (currency === "USD") return `$${price.toLocaleString()}`;
-  return `${currency ?? ""} ${price.toLocaleString()}`.trim();
-}
 
 function isBookingUrl(raw: string): boolean {
   try {
@@ -26,30 +21,23 @@ export default function FlightEditor({
   flight,
   onChange,
   onRemove,
+  onRefresh,
 }: {
   flight: TripFlight;
   onChange: (f: TripFlight) => void;
   onRemove: () => void;
+  // Triggers a server-side scrape + history append. Parent re-fetches the
+  // trip on success and pushes the updated flight back via onChange.
+  onRefresh: () => Promise<void>;
 }) {
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function fetchPrice() {
-    if (!flight.googleFlightsUrl) return;
     setFetching(true);
     setError(null);
     try {
-      const r = await fetch("/api/flights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: flight.googleFlightsUrl }),
-      });
-      if (!r.ok) {
-        const body = await r.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${r.status}`);
-      }
-      const itinerary = (await r.json()) as Itinerary;
-      onChange({ ...flight, itinerary, lastCheckedAt: new Date().toISOString() });
+      await onRefresh();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -102,7 +90,7 @@ export default function FlightEditor({
                   type="button"
                   onClick={async () => {
                     await fetchPrice();
-                    if (!error) close();
+                    close();
                   }}
                   disabled={!url || !urlIsValid || fetching}
                   className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
@@ -203,72 +191,6 @@ function ManualFlightFields({
           inputMode="decimal"
         />
       </label>
-    </div>
-  );
-}
-
-function ItineraryPanel({ itinerary, lastCheckedAt }: { itinerary: Itinerary; lastCheckedAt?: string }) {
-  return (
-    <div className="grid gap-3 rounded-lg bg-neutral-50/80 p-3 text-sm dark:bg-neutral-950/50">
-      <OneWaySection label="Out" data={itinerary.outbound} />
-      {itinerary.return && <OneWaySection label="Return" data={itinerary.return} />}
-      <div className="flex items-baseline justify-between border-t border-neutral-200 pt-2 dark:border-neutral-800">
-        <span className="text-base font-semibold tabular-nums">
-          {itinerary.price !== undefined
-            ? formatPrice(itinerary.price, itinerary.currency)
-            : <span className="text-sm font-normal text-neutral-400">Price unknown</span>}
-        </span>
-        <span className="text-xs text-neutral-500">
-          {lastCheckedAt ? `Checked ${new Date(lastCheckedAt).toLocaleString()}` : "Never checked"}
-        </span>
-      </div>
-      {itinerary.priceError && (
-        <div className="text-xs text-amber-600 dark:text-amber-400">price scrape failed: {itinerary.priceError}</div>
-      )}
-    </div>
-  );
-}
-
-function OneWaySection({ label, data }: { label: string; data: OneWay }) {
-  const offset = data.arriveDayOffset ?? 0;
-  const route = `${data.legs[0]?.origin ?? ""} → ${data.legs[data.legs.length - 1]?.destination ?? ""}`;
-  return (
-    <div>
-      <div className="mb-1 flex items-baseline gap-2">
-        <span className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</span>
-        <span className="text-xs text-neutral-600 dark:text-neutral-400">{formatLocalDate(data.departDate)}</span>
-      </div>
-      <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
-        {data.departTime && data.arriveTime ? (
-          <>
-            <span className="text-base font-medium tabular-nums">
-              {data.departTime} → {data.arriveTime}
-            </span>
-            {offset > 0 && (
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                +{offset}
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="text-sm text-neutral-400">Times unknown</span>
-        )}
-        <span className="ml-auto text-xs text-neutral-500 tabular-nums">{route}</span>
-      </div>
-      <div className="grid gap-0.5">
-        {data.legs.map((leg, i) => (
-          <LegRow key={i} leg={leg} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function LegRow({ leg }: { leg: Leg }) {
-  return (
-    <div className="flex items-baseline gap-2 text-xs text-neutral-500">
-      <span className="w-12 shrink-0 tabular-nums text-neutral-400">{leg.airline}{leg.flightNumber}</span>
-      <span className="tabular-nums">{leg.origin} → {leg.destination}</span>
     </div>
   );
 }

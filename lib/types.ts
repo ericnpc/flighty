@@ -57,6 +57,8 @@ export type BudgetItem = {
   notes: string;
 };
 
+export type TripCurrency = "USD" | "EUR";
+
 export type Trip = {
   id: string;
   name: string;
@@ -65,6 +67,7 @@ export type Trip = {
   destinations: string[];
   notes: string;
   mapsUrl: string;
+  currency: TripCurrency;
   flights: TripFlight[];
   stays: Stay[];
   budget: BudgetItem[];

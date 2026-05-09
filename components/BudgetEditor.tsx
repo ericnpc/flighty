@@ -1,6 +1,7 @@
 "use client";
 
-import type { BudgetItem, Stay, TripFlight } from "@/lib/types";
+import type { BudgetItem, Stay, TripCurrency, TripFlight } from "@/lib/types";
+import { formatMoney } from "@/lib/money";
 
 const inputCls =
   "w-full rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:focus:border-neutral-300";
@@ -8,11 +9,6 @@ const inputCls =
 function parseCost(s: string): number {
   const n = Number(s.replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : 0;
-}
-
-function formatPrice(price: number, currency?: string): string {
-  if (currency === "USD") return `$${price.toLocaleString()}`;
-  return `${currency ?? ""} ${price.toLocaleString()}`.trim();
 }
 
 type AutoEntry = {
@@ -23,7 +19,7 @@ type AutoEntry = {
   costDisplay: string;
 };
 
-function flightEntries(flights: TripFlight[]): AutoEntry[] {
+function flightEntries(flights: TripFlight[], tripCurrency: TripCurrency): AutoEntry[] {
   return flights
     .filter((f) => f.bought)
     .map((f) => {
@@ -36,18 +32,20 @@ function flightEntries(flights: TripFlight[]): AutoEntry[] {
         const route = `${it.outbound.legs[0]?.origin ?? "?"} → ${it.outbound.legs[it.outbound.legs.length - 1]?.destination ?? "?"}${it.return ? " (round trip)" : ""}`;
         label = f.title || route;
         cost = it.price ?? 0;
-        costDisplay = it.price !== undefined ? formatPrice(it.price, it.currency) : "—";
+        // Imported flights keep whatever currency the scraper returned. If
+        // it doesn't match the trip currency, the row shows it explicitly.
+        costDisplay = it.price !== undefined ? formatMoney(it.price, it.currency) : "—";
       } else {
         label = f.title || "Flight";
         cost = parseCost(f.manualCost ?? "");
-        costDisplay = cost > 0 ? `$${cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—";
+        costDisplay = cost > 0 ? formatMoney(cost, tripCurrency) : "—";
       }
 
       return { id: `flight-${f.id}`, icon: "✈", label, cost, costDisplay };
     });
 }
 
-function stayEntries(stays: Stay[]): AutoEntry[] {
+function stayEntries(stays: Stay[], tripCurrency: TripCurrency): AutoEntry[] {
   return stays
     .filter((s) => s.bought)
     .map((s) => {
@@ -58,7 +56,7 @@ function stayEntries(stays: Stay[]): AutoEntry[] {
         icon: "🏨",
         label,
         cost,
-        costDisplay: cost > 0 ? `$${cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—",
+        costDisplay: cost > 0 ? formatMoney(cost, tripCurrency) : "—",
       };
     });
 }
@@ -67,6 +65,7 @@ export default function BudgetEditor({
   items,
   flights,
   stays,
+  currency,
   onChange,
   onAdd,
   onRemove,
@@ -74,11 +73,12 @@ export default function BudgetEditor({
   items: BudgetItem[];
   flights: TripFlight[];
   stays: Stay[];
+  currency: TripCurrency;
   onChange: (id: string, next: BudgetItem) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
 }) {
-  const auto = [...flightEntries(flights), ...stayEntries(stays)];
+  const auto = [...flightEntries(flights, currency), ...stayEntries(stays, currency)];
   const manualTotal = items.reduce((sum, i) => sum + parseCost(i.cost), 0);
   const autoTotal = auto.reduce((sum, e) => sum + e.cost, 0);
   const total = manualTotal + autoTotal;
@@ -108,9 +108,7 @@ export default function BudgetEditor({
           ))}
           <div className="mt-2 flex items-baseline justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
             <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total</span>
-            <span className="text-xl font-semibold tabular-nums">
-              ${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-            </span>
+            <span className="text-xl font-semibold tabular-nums">{formatMoney(total, currency)}</span>
           </div>
         </div>
       )}
