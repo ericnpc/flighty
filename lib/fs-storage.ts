@@ -1,6 +1,6 @@
 // Filesystem storage. Server-side only — do not import from client components.
 import "server-only";
-import { mkdir, readdir, readFile, writeFile, rm, appendFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile, rm, rename, appendFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Trip } from "./types";
 
@@ -48,6 +48,20 @@ export async function writeTrip(trip: Trip): Promise<void> {
 
 export async function deleteTrip(id: string): Promise<void> {
   await rm(tripDir(id), { recursive: true, force: true });
+}
+
+export async function listTripIds(): Promise<string[]> {
+  try {
+    await mkdir(DATA_DIR, { recursive: true });
+    const entries = await readdir(DATA_DIR, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch {
+    return [];
+  }
+}
+
+export async function renameTripDir(oldId: string, newId: string): Promise<void> {
+  await rename(tripDir(oldId), tripDir(newId));
 }
 
 export type PriceSnapshot = {

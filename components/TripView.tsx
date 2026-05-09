@@ -7,6 +7,7 @@ import { formatLocalDate, isInvalidRange, nightsBetween } from "@/lib/dates";
 import { toEmbedSrc } from "@/lib/maps";
 import { formatMoney } from "@/lib/money";
 import { ItineraryPanel } from "./ItineraryDisplay";
+import Sparkline from "./Sparkline";
 
 function parseCost(s: string): number {
   const n = Number(s.replace(/[^0-9.\-]/g, ""));
@@ -121,7 +122,19 @@ function FlightCard({ flight, currency, history }: { flight: TripFlight; currenc
         <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">{flight.notes}</p>
       )}
 
-      {history.length > 1 && <PriceHistory history={history} currency={flight.itinerary?.currency} />}
+      {flight.googleFlightsUrl && (
+        <a
+          href={flight.googleFlightsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+        >
+          View on Google Flights
+          <span aria-hidden>↗</span>
+        </a>
+      )}
+
+      {history.length > 0 && <PriceHistory history={history} currency={flight.itinerary?.currency} />}
     </div>
   );
 }
@@ -138,14 +151,41 @@ function ManualFlightSummary({ flight, currency }: { flight: TripFlight; currenc
 }
 
 function PriceHistory({ history, currency }: { history: PriceSnapshot[]; currency?: string }) {
-  // Show last 6 snapshots, oldest first.
+  if (history.length === 0) return null;
+
+  const valid = history.filter((s) => s.price !== undefined) as Array<PriceSnapshot & { price: number }>;
+  const prices = valid.map((s) => s.price);
+  const showChart = prices.length >= 2;
+  const min = showChart ? Math.min(...prices) : 0;
+  const max = showChart ? Math.max(...prices) : 0;
+  const first = prices[0];
+  const latest = prices[prices.length - 1];
+  const change = showChart ? latest - first : 0;
   const recent = history.slice(-6);
+
   return (
     <details className="mt-3 rounded-lg bg-neutral-50/80 p-3 text-xs dark:bg-neutral-950/50">
       <summary className="cursor-pointer font-medium text-neutral-700 dark:text-neutral-300">
         Price history ({history.length} snapshot{history.length !== 1 ? "s" : ""})
       </summary>
-      <ul className="mt-2 grid gap-0.5 tabular-nums">
+
+      {showChart && (
+        <div className="mt-3 grid gap-2">
+          <Sparkline values={prices} width={240} height={48} />
+          <dl className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] tabular-nums text-neutral-500">
+            <Stat label="Now" value={formatMoney(latest, currency)} />
+            <Stat label="Min" value={formatMoney(min, currency)} />
+            <Stat label="Max" value={formatMoney(max, currency)} />
+            <Stat
+              label="Δ"
+              value={`${change >= 0 ? "+" : ""}${formatMoney(change, currency)}`}
+              tone={change < 0 ? "good" : change > 0 ? "bad" : undefined}
+            />
+          </dl>
+        </div>
+      )}
+
+      <ul className={`grid gap-0.5 tabular-nums ${showChart ? "mt-3 border-t border-neutral-200 pt-2 dark:border-neutral-800" : "mt-2"}`}>
         {recent.map((s, i) => (
           <li key={i} className="flex justify-between text-neutral-500">
             <span>{new Date(s.at).toLocaleString()}</span>
@@ -156,6 +196,21 @@ function PriceHistory({ history, currency }: { history: PriceSnapshot[]; currenc
         ))}
       </ul>
     </details>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" }) {
+  const cls =
+    tone === "good"
+      ? "text-green-600 dark:text-green-400"
+      : tone === "bad"
+        ? "text-red-600 dark:text-red-400"
+        : "text-neutral-700 dark:text-neutral-300";
+  return (
+    <div className="flex items-baseline gap-1">
+      <dt className="text-neutral-500">{label}</dt>
+      <dd className={`font-medium ${cls}`}>{value}</dd>
+    </div>
   );
 }
 

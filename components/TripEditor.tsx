@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BudgetItem, Stay, Trip, TripCurrency, TripFlight } from "@/lib/types";
 import { newBudgetItem, newFlight, newStay } from "@/lib/defaults";
-import { deleteTripApi, getTripApi, refreshFlightApi, saveTripApi } from "@/lib/api-client";
+import { deleteTripApi, getTripApi, refreshFlightApi, renameSlugApi, saveTripApi } from "@/lib/api-client";
 import { isInvalidRange, nightsBetween } from "@/lib/dates";
 import { toEmbedSrc } from "@/lib/maps";
 import EllipsisMenu from "./EllipsisMenu";
@@ -172,6 +172,31 @@ export default function TripEditor({ id }: { id: string }) {
                     after switching to re-scrape in the new currency.
                   </span>
                 </label>
+
+                <div className="grid gap-1">
+                  <span className="text-[10px] uppercase tracking-wide text-neutral-500">URL slug</span>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded bg-neutral-100 px-2 py-1 text-xs dark:bg-neutral-800">{trip.id}</code>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        // Make sure the latest name is on disk before renaming.
+                        await saveTripApi(trip);
+                        const updated = await renameSlugApi(trip.id);
+                        if (updated.id !== trip.id) {
+                          close();
+                          router.replace(`/trips/${updated.id}/edit`);
+                        }
+                      }}
+                      className="rounded-md bg-neutral-100 px-2.5 py-1 text-xs hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+                    >
+                      Update from name
+                    </button>
+                  </div>
+                  <span className="text-xs text-neutral-500">
+                    Renames the directory and changes the URL.
+                  </span>
+                </div>
 
                 <label className="grid gap-1">
                   <span className="text-[10px] uppercase tracking-wide text-neutral-500">Google Maps link</span>

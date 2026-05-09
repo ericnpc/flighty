@@ -55,3 +55,10 @@ export async function refreshFlightApi(tripId: string, flightId: string): Promis
     await fetch(`/api/trips/${tripId}/refresh/${flightId}`, { method: "POST" }),
   );
 }
+
+// Returns the (possibly updated) trip; the id may have changed.
+export async function renameSlugApi(tripId: string): Promise<Trip> {
+  return unwrap<Trip>(
+    await fetch(`/api/trips/${tripId}/rename-slug`, { method: "POST" }),
+  );
+}
